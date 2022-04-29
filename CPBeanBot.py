@@ -4,6 +4,7 @@ from pynput.mouse import Listener
 import cv2 as cv
 import numpy as np
 import glob
+from time import time
 
 # match template choices
 # cv.TM_CCOEFF.........maybe
@@ -13,7 +14,7 @@ import glob
 # cv.TM_SQDIFF.........not good
 # cv.TM_SQDIFF_NORMED..
 
-mt = cv.TM_SQDIFF_NORMED
+mt = cv.TM_CCOEFF_NORMED
 
 # imread choices
 # cv.IMREAD_UNCHANGED
@@ -27,11 +28,6 @@ mouse = ms.Controller()
 
 need = glob.glob("C:\\Users\\kille\\Desktop\\image finder\\bean game\\bb_img\\*.png")
 
-needle_w = needle.shape[1]
-needle_h = needle.shape[0]
-
-result = cv.matchTemplate(haystack, needle, mt)
-
 
 def mouseClick():
     mouse.press(ms.Button.left)
@@ -41,7 +37,7 @@ def mouseClick():
 def newPic():
     global screen
     screen = np.array(ImageGrab.grab())
-    screen = cv.cvtColor(screen, cv.COLOR_BGR2GRAY)
+    screen = cv.cvtColor(screen, cv.COLOR_RGB2BGR)
 
     # result = cv.matchTemplate(screen, best(), mt)
     # min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
@@ -60,16 +56,18 @@ def best():
     newPic()
     for bag in need:
         needle = cv.imread(bag, ir)
+        #remove alpha channel to solve error
+        needle = needle[:,:,:3]
         result = cv.matchTemplate(screen, needle, mt)
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
-        threshold = .2
-        if max_val <= threshold:
+        threshold = .8
+        if max_val >= threshold:
             if max_val > bestVal:
                 bestVal = max_val
                 best_match = bag
             # print('Conf: ' + str(max_val))
     if best_match is not None:
-        needle = cv.imread(str(best_match), ir)
+        needle = cv.imread(str(best_match))
         print('The highest confidence was: ' + str(bestVal))
         print('The best match would be: ' + str(best_match))
         result = cv.matchTemplate(screen, needle, mt)
@@ -79,19 +77,23 @@ def best():
         top_left = max_loc
         center = (top_left[0] + (needle_w / 2), top_left[1] + (needle_h / 2))
         bottom_right = (top_left[0] + needle_w, top_left[1] + needle_h)
-        # mouse.position = center
+        mouse.position = center
         # cv.rectangle(screen, top_left, bottom_right, color=(255, 0, 0), thickness=2, lineType=cv.LINE_4)
         # cv.imshow('Result', screen)
         # cv.waitKey(2000)
         # cv.destroyWindow('Result')
     else:
+        print('The highest confidence was: ' + str(bestVal))
+        print('The best match would be: ' + str(best_match))
         print('Nothing was found')
 
 
 screen = np.array(ImageGrab.grab())
-screen = cv.cvtColor(screen, cv.COLOR_BGR2GRAY)
+screen = cv.cvtColor(screen, cv.COLOR_RGB2BGR)
 
-for y in range(50):
+loop_time = time()
+for y in range(25):
     for x in range(2):
         best()
+        # print('FPS: {}'.format(1 / (time() - loop_time)))
     dropOff()
